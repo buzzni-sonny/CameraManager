@@ -34,10 +34,15 @@ public enum CameraOutputQuality: Int {
     case low, medium, high
 }
 
+public enum CaptureCropMode {
+    case none, screen
+}
+
 /// Class for handling iDevices custom camera usage
 open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGestureRecognizerDelegate {
     
     // MARK: - Public properties
+    open var captureCropMode: CaptureCropMode = .none
     
     /// Capture session to customize camera settings.
     open var captureSession: AVCaptureSession?
@@ -403,8 +408,22 @@ open class CameraManager: NSObject, AVCaptureFileOutputRecordingDelegate, UIGest
                 }
             })
         }
-        
-        imageCompletion(image, nil)
+
+        if let previewLayer = self.previewLayer,
+            self.captureCropMode == .screen {
+            let outputRect = previewLayer.metadataOutputRectOfInterest(for: previewLayer.bounds)
+            var cgImage = image.cgImage!
+            let width = CGFloat(cgImage.width)
+            let height = CGFloat(cgImage.height)
+            let cropRect = CGRect(x: outputRect.origin.x * width, y: outputRect.origin.y * height, width: outputRect.size.width * width, height: outputRect.size.height * height)
+            
+            cgImage = cgImage.cropping(to: cropRect)!
+            let croppedUIImage = UIImage(cgImage: cgImage, scale: 1.0, orientation: image.imageOrientation)
+            
+            imageCompletion(croppedUIImage, nil)
+        } else {
+            imageCompletion(image, nil)
+        }
     }
     
     /**
